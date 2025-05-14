@@ -17,6 +17,7 @@ interface BriefGeneratorProps {
 
 const BriefGenerator = ({ apiKey, model, onBriefGenerated }: BriefGeneratorProps) => {
   const [exampleBrief, setExampleBrief] = useState("");
+  const [selectedArticles, setSelectedArticles] = useState("");
   const [newTopic, setNewTopic] = useState("");
   const [prompt, setPrompt] = useState("");
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -25,21 +26,15 @@ const BriefGenerator = ({ apiKey, model, onBriefGenerated }: BriefGeneratorProps
 
   // Check for articles from the RSS reader
   useEffect(() => {
-    const selectedArticles = sessionStorage.getItem("selectedArticles");
-    if (selectedArticles) {
-      setExampleBrief(prevBrief => {
-        // If there's already content, append to it
-        const newBrief = prevBrief ? 
-          `${prevBrief}\n\n--- Selected Articles ---\n${selectedArticles}` : 
-          `--- Selected Articles ---\n${selectedArticles}`;
-        return newBrief;
-      });
+    const articles = sessionStorage.getItem("selectedArticles");
+    if (articles) {
+      setSelectedArticles(articles);
       // Clear the storage after use
       sessionStorage.removeItem("selectedArticles");
       
       toast({
         title: "Articles Imported",
-        description: "Selected articles have been added to your example brief.",
+        description: "Selected articles have been added to your brief generator.",
       });
     }
   }, [toast]);
@@ -55,10 +50,17 @@ const BriefGenerator = ({ apiKey, model, onBriefGenerated }: BriefGeneratorProps
     }
 
     setIsGeneratingPrompt(true);
-    const generatedPrompt = `Create a new investment brief about:
+    let generatedPrompt = `Create a new investment brief about:
 <topic>${newTopic}</topic>
 in the form of
 <example>${exampleBrief}</example>`;
+
+    // Add selected articles if available
+    if (selectedArticles) {
+      generatedPrompt += `\n\n<reference_articles>
+${selectedArticles}
+</reference_articles>`;
+    }
     
     setPrompt(generatedPrompt);
     setIsGeneratingPrompt(false);
@@ -81,7 +83,8 @@ in the form of
         model,
         newTopic,
         exampleBrief,
-        prompt // Use the potentially edited prompt
+        prompt, // Use the potentially edited prompt
+        selectedArticles
       );
       onBriefGenerated(result || "");
       toast({
@@ -113,6 +116,21 @@ in the form of
           className="min-h-[150px]"
         />
       </div>
+
+      {selectedArticles && (
+        <div className="space-y-2">
+          <Label htmlFor="selected-articles" className="text-sm font-medium">
+            Selected Articles
+          </Label>
+          <Textarea
+            id="selected-articles"
+            value={selectedArticles}
+            onChange={(e) => setSelectedArticles(e.target.value)}
+            placeholder="Selected articles will appear here..."
+            className="min-h-[100px] font-mono text-xs"
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="new-topic" className="text-sm font-medium">

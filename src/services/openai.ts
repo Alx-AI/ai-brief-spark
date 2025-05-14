@@ -13,17 +13,26 @@ export const generateBrief = async (
   model: string,
   newTopic: string,
   userPastedBrief: string,
-  customPrompt?: string
+  customPrompt?: string,
+  selectedArticles?: string
 ) => {
   try {
     const client = createOpenAIClient(apiKey);
     
-    const prompt = customPrompt || `
-      Create a new investment brief about:
-      <topic>${newTopic}</topic>
-      in the form of
-      <example>${userPastedBrief}</example>
-    `;
+    let prompt = customPrompt;
+    
+    if (!prompt) {
+      prompt = `Create a new investment brief about:
+<topic>${newTopic}</topic>
+in the form of
+<example>${userPastedBrief}</example>`;
+      
+      if (selectedArticles) {
+        prompt += `\n\n<reference_articles>
+${selectedArticles}
+</reference_articles>`;
+      }
+    }
 
     const response = await client.chat.completions.create({
       model: model,
