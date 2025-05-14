@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,27 @@ const BriefGenerator = ({ apiKey, model, onBriefGenerated }: BriefGeneratorProps
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
   const { toast } = useToast();
+
+  // Check for articles from the RSS reader
+  useEffect(() => {
+    const selectedArticles = sessionStorage.getItem("selectedArticles");
+    if (selectedArticles) {
+      setExampleBrief(prevBrief => {
+        // If there's already content, append to it
+        const newBrief = prevBrief ? 
+          `${prevBrief}\n\n--- Selected Articles ---\n${selectedArticles}` : 
+          `--- Selected Articles ---\n${selectedArticles}`;
+        return newBrief;
+      });
+      // Clear the storage after use
+      sessionStorage.removeItem("selectedArticles");
+      
+      toast({
+        title: "Articles Imported",
+        description: "Selected articles have been added to your example brief.",
+      });
+    }
+  }, [toast]);
 
   const generatePromptPreview = () => {
     if (!exampleBrief || !newTopic) {
