@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 interface ArticleSelection {
   title: string;
   link: string;
+  markdown?: string;
 }
 
 const RSSReaderPage = () => {
@@ -14,9 +15,16 @@ const RSSReaderPage = () => {
 
   const handleArticlesSelected = (articles: ArticleSelection[]) => {
     // Format the selected articles as a prompt for the brief generator
-    const formattedText = articles.map(article => 
-      `Title: ${article.title}\nLink: ${article.link}`
-    ).join("\n\n");
+    const formattedText = articles.map(article => {
+      let text = `Title: ${article.title}\nLink: ${article.link}`;
+      
+      // If markdown content is available, include it
+      if (article.markdown) {
+        text += `\n\nContent:\n${article.markdown.substring(0, 2000)}${article.markdown.length > 2000 ? '...' : ''}`;
+      }
+      
+      return text;
+    }).join("\n\n");
     
     // Store the formatted text in sessionStorage to be accessed by the Brief Generator
     sessionStorage.setItem("selectedArticles", formattedText);

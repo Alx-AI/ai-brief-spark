@@ -8,15 +8,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
+import { ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 
 interface Article {
   title: string;
   link: string;
   selected: boolean;
+  markdown?: string;
+  isLoadingMarkdown?: boolean;
+  showPreview?: boolean;
 }
 
 interface RSSReaderProps {
-  onArticlesSelected: (articles: { title: string, link: string }[]) => void;
+  onArticlesSelected: (articles: { title: string, link: string, markdown?: string }[]) => void;
 }
 
 const RSSReader = ({ onArticlesSelected }: RSSReaderProps) => {
@@ -62,6 +68,57 @@ const RSSReader = ({ onArticlesSelected }: RSSReaderProps) => {
   const toggleArticleSelection = (index: number) => {
     setArticles(prev => prev.map((article, i) => 
       i === index ? { ...article, selected: !article.selected } : article
+    ));
+  };
+
+  const fetchMarkdown = async (index: number) => {
+    const article = articles[index];
+    
+    // Skip if we already have markdown content
+    if (article.markdown) {
+      toggleMarkdownPreview(index);
+      return;
+    }
+
+    try {
+      // Set loading state for this article
+      setArticles(prev => prev.map((a, i) => 
+        i === index ? { ...a, isLoadingMarkdown: true } : a
+      ));
+
+      const jinaUrl = `https://r.jina.ai/${article.link}`;
+      const response = await axios.get(jinaUrl);
+      
+      setArticles(prev => prev.map((a, i) => 
+        i === index ? { 
+          ...a, 
+          markdown: response.data,
+          isLoadingMarkdown: false,
+          showPreview: true 
+        } : a
+      ));
+      
+      toast({
+        title: "Content Loaded",
+        description: "Article markdown content fetched successfully",
+      });
+    } catch (error) {
+      console.error("Error fetching markdown:", error);
+      setArticles(prev => prev.map((a, i) => 
+        i === index ? { ...a, isLoadingMarkdown: false } : a
+      ));
+      
+      toast({
+        title: "Error Loading Content",
+        description: "Failed to fetch article content. The link may not be compatible with Jina Reader.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleMarkdownPreview = (index: number) => {
+    setArticles(prev => prev.map((article, i) => 
+      i === index ? { ...article, showPreview: !article.showPreview } : article
     ));
   };
 
@@ -131,27 +188,54 @@ const RSSReader = ({ onArticlesSelected }: RSSReaderProps) => {
               </Button>
             </div>
             
-            <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+            <div className="max-h-[600px] overflow-y-auto space-y-4 pr-2">
               {articles.map((article, index) => (
                 <div 
                   key={index} 
-                  className="flex items-center space-x-2 p-2 border rounded hover:bg-slate-50"
+                  className="border rounded p-3 hover:bg-slate-50"
                 >
-                  <Checkbox
-                    id={`article-${index}`}
-                    checked={article.selected}
-                    onCheckedChange={() => toggleArticleSelection(index)}
-                  />
-                  <div className="flex-1 overflow-hidden">
-                    <a 
-                      href={article.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-sm font-medium hover:underline truncate block"
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Checkbox
+                      id={`article-${index}`}
+                      checked={article.selected}
+                      onCheckedChange={() => toggleArticleSelection(index)}
+                    />
+                    <div className="flex-1 overflow-hidden">
+                      <a 
+                        href={article.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-sm font-medium hover:underline truncate block"
+                      >
+                        {article.title}
+                      </a>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-2 flex gap-1 items-center"
+                      onClick={() => fetchMarkdown(index)}
+                      disabled={article.isLoadingMarkdown}
                     >
-                      {article.title}
-                    </a>
+                      <BookOpen className="h-4 w-4" />
+                      {article.isLoadingMarkdown ? "Loading..." : article.markdown ? 
+                        (article.showPreview ? "Hide Content" : "Show Content") : "Get Content"}
+                    </Button>
                   </div>
+                  
+                  {article.showPreview && article.markdown && (
+                    <div className="mt-4 border-t pt-2">
+                      <div className="bg-slate-50 p-3 rounded">
+                        <ScrollArea className="h-[300px] rounded">
+                          <div className="prose prose-sm max-w-none">
+                            <ReactMarkdown>
+                              {article.markdown}
+                            </ReactMarkdown>
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
